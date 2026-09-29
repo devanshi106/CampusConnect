@@ -109,8 +109,7 @@ React Interface
 | Backend           | Java                        |
 | Backend Framework | Spring Boot                 |
 | API               | REST                        |
-| ORM               | Spring Data JPA / Hibernate |
-| Database          | MySQL                       |
+| Database          | PostgreSQL                  |
 | Authentication    | Spring Security             |
 | API Testing       | Postman                     |
 | UI/UX Design      | Figma                       |
