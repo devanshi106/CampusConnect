@@ -28,7 +28,11 @@ public class AuthService {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "An account with this email already exists");
         }
         Role role = request.role() == Role.ORGANISER ? Role.ORGANISER : Role.STUDENT;
-        User user = users.save(new User(email, passwordEncoder.encode(request.password()), role));
+        String org = request.organization();
+        if (role == Role.ORGANISER && (org == null || org.isBlank())) {
+            org = "Student Council";
+        }
+        User user = users.save(new User(email, passwordEncoder.encode(request.password()), role, org));
         return toResponse(user);
     }
 
@@ -39,6 +43,6 @@ public class AuthService {
     }
 
     private AuthResponse toResponse(User user) {
-        return new AuthResponse(user.getId(), user.getEmail(), user.getRole().name());
+        return new AuthResponse(user.getId(), user.getEmail(), user.getRole().name(), user.getOrganization());
     }
 }

@@ -62,8 +62,7 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers("/api/auth/**", "/api/hello", "/error").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/events/**").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/events/**").hasAnyRole("ORGANISER", "ADMIN")
+                        .requestMatchers("/api/events/**").permitAll()
                         .anyRequest().authenticated())
                 .build();
     }
