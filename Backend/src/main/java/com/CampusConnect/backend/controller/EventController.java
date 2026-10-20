@@ -61,8 +61,8 @@ public class EventController {
     }
 
     @GetMapping("/{id}/attendees")
-    public List<String> getEventAttendees(@PathVariable Long id) {
-        return eventService.getRegisteredStudentEmailsForEvent(id);
+    public List<EventRegistration> getEventAttendees(@PathVariable Long id) {
+        return eventService.getDetailedAttendeesForEvent(id);
     }
 
     @GetMapping("/registration-counts")
@@ -72,14 +72,29 @@ public class EventController {
 
     @PostMapping("/{id}/register")
     @ResponseStatus(HttpStatus.CREATED)
-    public Map<String, Object> registerForEvent(@PathVariable Long id, @RequestBody Map<String, String> request) {
-        String email = request.getOrDefault("email", request.get("studentEmail"));
-        EventRegistration registration = eventService.registerStudent(id, email);
+    public Map<String, Object> registerForEvent(@PathVariable Long id, @RequestBody Map<String, Object> request) {
+        String email = (String) request.getOrDefault("email", request.get("studentEmail"));
+        String studentName = (String) request.get("studentName");
+        String department = (String) request.get("department");
+        String year = (String) request.get("year");
+
+        Object answersObj = request.get("answers");
+        String answers = null;
+        if (answersObj instanceof String s) {
+            answers = s;
+        } else if (answersObj != null) {
+            answers = answersObj.toString();
+        }
+
+        EventRegistration registration = eventService.registerStudent(id, email, studentName, department, year, answers);
         return Map.of(
                 "success", true,
                 "message", "Successfully registered for event",
                 "eventId", registration.getEventId(),
-                "studentEmail", registration.getStudentEmail()
+                "studentEmail", registration.getStudentEmail(),
+                "studentName", registration.getStudentName() != null ? registration.getStudentName() : "",
+                "department", registration.getDepartment() != null ? registration.getDepartment() : "",
+                "year", registration.getYear() != null ? registration.getYear() : ""
         );
     }
 

@@ -19,14 +19,32 @@ public class EventRegistration {
     @Column(name = "event_id", nullable = false)
     private Long eventId;
 
+    private String studentName;
+
+    private String department;
+
+    @Column(name = "academic_year")
+    private String year;
+
+    @Column(columnDefinition = "TEXT")
+    private String answers;
+
     private LocalDateTime registeredAt = LocalDateTime.now();
 
     public EventRegistration() {
     }
 
     public EventRegistration(String studentEmail, Long eventId) {
+        this(studentEmail, eventId, null, null, null, null);
+    }
+
+    public EventRegistration(String studentEmail, Long eventId, String studentName, String department, String year, String answers) {
         this.studentEmail = studentEmail;
         this.eventId = eventId;
+        this.studentName = studentName;
+        this.department = department;
+        this.year = year;
+        this.answers = answers;
         this.registeredAt = LocalDateTime.now();
     }
 
@@ -48,6 +66,38 @@ public class EventRegistration {
 
     public void setEventId(Long eventId) {
         this.eventId = eventId;
+    }
+
+    public String getStudentName() {
+        return studentName;
+    }
+
+    public void setStudentName(String studentName) {
+        this.studentName = studentName;
+    }
+
+    public String getDepartment() {
+        return department;
+    }
+
+    public void setDepartment(String department) {
+        this.department = department;
+    }
+
+    public String getYear() {
+        return year;
+    }
+
+    public void setYear(String year) {
+        this.year = year;
+    }
+
+    public String getAnswers() {
+        return answers;
+    }
+
+    public void setAnswers(String answers) {
+        this.answers = answers;
     }
 
     public LocalDateTime getRegisteredAt() {

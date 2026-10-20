@@ -9,6 +9,7 @@ import java.util.List;
 
 public interface EventRepository extends JpaRepository<Event, Long> {
     boolean existsByTitle(String title);
+    List<Event> findByTitle(String title);
 
     List<Event> findByStatusIgnoreCase(String status);
 
