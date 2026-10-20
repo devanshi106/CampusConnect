@@ -74,6 +74,10 @@ public class EventService {
                 .toList();
     }
 
+    public List<EventRegistration> getDetailedAttendeesForEvent(Long eventId) {
+        return registrationRepository.findByEventId(eventId);
+    }
+
     public Map<Long, Long> getAllRegistrationCounts() {
         Map<Long, Long> counts = new HashMap<>();
         List<Event> all = eventRepository.findAll();
@@ -84,6 +88,10 @@ public class EventService {
     }
 
     public EventRegistration registerStudent(Long eventId, String studentEmail) {
+        return registerStudent(eventId, studentEmail, null, null, null, null);
+    }
+
+    public EventRegistration registerStudent(Long eventId, String studentEmail, String studentName, String department, String year, String answers) {
         if (studentEmail == null || studentEmail.isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Student email is required");
         }
@@ -97,7 +105,7 @@ public class EventService {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "You are already registered for this event");
         }
 
-        return registrationRepository.save(new EventRegistration(normalizedEmail, eventId));
+        return registrationRepository.save(new EventRegistration(normalizedEmail, eventId, studentName, department, year, answers));
     }
 
     public List<Long> getRegisteredEventIds(String studentEmail) {
