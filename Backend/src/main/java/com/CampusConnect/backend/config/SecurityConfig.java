@@ -61,7 +61,7 @@ public class SecurityConfig {
                 .securityContext(context -> context.securityContextRepository(securityContextRepository))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
                 .authorizeHttpRequests(authorize -> authorize
-                        .requestMatchers("/api/auth/**", "/api/hello", "/error").permitAll()
+                        .requestMatchers("/", "/api/auth/**", "/api/hello", "/error").permitAll()
                         .requestMatchers("/api/events/**").permitAll()
                         .requestMatchers("/api/profile/**").permitAll()
                         .anyRequest().authenticated())
