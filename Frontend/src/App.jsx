@@ -1,13 +1,12 @@
 import { useEffect, useState } from 'react'
 import './App.css'
-import campusConnectLogo from './assets/campusconnect-logo.png'
+import Logo from './components/Logo'
+import { API_URL as apiUrl } from './config/api'
 import StudentDashboard from './StudentDashboard'
 import OrganizerDashboard from './OrganizerDashboard'
 import AdminDashboard from './AdminDashboard'
 
 const Arrow = () => <span aria-hidden="true">→</span>
-const Logo = () => <img className="logo-mark" src={campusConnectLogo} alt="" />
-const apiUrl = import.meta.env.VITE_API_URL ?? 'http://localhost:8080'
 
 const roles = [
   { id: 'student', label: 'Student', detail: 'Discover events, find your people, and make campus yours.', icon: '✦' },
@@ -15,18 +14,6 @@ const roles = [
   { id: 'admin', label: 'Administrator', detail: 'Review approvals, oversee campus activity and manage events.', icon: '◈' },
 ]
 
-const demoAdmins = [
-  { label: 'Admin 1', email: 'admin1@campusconnect.demo', password: 'admin123' },
-  { label: 'Admin 2', email: 'admin2@campusconnect.demo', password: 'admin456' },
-  { label: 'Admin 3', email: 'admin3@campusconnect.demo', password: 'admin789' },
-]
-
-const demoOrganizers = [
-  { label: 'Student Council', email: 'council@campusconnect.demo', password: 'council123', org: 'Student Council', icon: '🏛️' },
-  { label: 'CSI Committee', email: 'csi@campusconnect.demo', password: 'csi123', org: 'CSI Committee', icon: '💻' },
-  { label: 'Airnova', email: 'airnova@campusconnect.demo', password: 'airnova123', org: 'Airnova', icon: '✈️' },
-  { label: 'Sports Committee', email: 'sports@campusconnect.demo', password: 'sports123', org: 'Sports Committee', icon: '🏅' },
-]
 
 const recognizedOrgs = [
   'Student Council',
@@ -195,57 +182,12 @@ function LoginPage({ admin = false, onBack, onRegister, onSuccessLogin }) {
           )}
 
           {!admin && role === 'organiser' && (
-            <div className="demo-credentials-box">
-              <p className="demo-credentials-title">Demo Student Organizer Accounts</p>
-              <div className="demo-credentials-list">
-                {demoOrganizers.map((item) => (
-                  <button
-                    key={item.email}
-                    type="button"
-                    className="demo-credential-btn"
-                    onClick={() => {
-                      setEmail(item.email)
-                      setPassword(item.password)
-                    }}
-                    title={`Click to login as ${item.label}`}
-                  >
-                    <span className="demo-badge">{item.icon} {item.label}</span>
-                    <span className="demo-email">{item.email}</span>
-                    <span className="demo-pass">PW: <code>{item.password}</code></span>
-                  </button>
-                ))}
-              </div>
-              <p className="login-footer" style={{ marginTop: 12 }}>
-                Need a new club account?{' '}
-                <button type="button" className="text-button" onClick={onRegister}>
-                  Create an organizer account
-                </button>
-              </p>
-            </div>
-          )}
-
-          {admin && (
-            <div className="demo-credentials-box">
-              <p className="demo-credentials-title">Demo Administrator Credentials</p>
-              <div className="demo-credentials-list">
-                {demoAdmins.map((item) => (
-                  <button
-                    key={item.email}
-                    type="button"
-                    className="demo-credential-btn"
-                    onClick={() => {
-                      setEmail(item.email)
-                      setPassword(item.password)
-                    }}
-                    title="Click to autofill this admin account"
-                  >
-                    <span className="demo-badge">{item.label}</span>
-                    <span className="demo-email">{item.email}</span>
-                    <span className="demo-pass">PW: <code>{item.password}</code></span>
-                  </button>
-                ))}
-              </div>
-            </div>
+            <p className="login-footer">
+              Need a new club account?{' '}
+              <button type="button" className="text-button" onClick={onRegister}>
+                Create an organizer account
+              </button>
+            </p>
           )}
         </div>
       </section>
@@ -479,6 +421,13 @@ function App() {
   }
 
   useEffect(() => {
+    document.documentElement.removeAttribute('data-theme')
+    try {
+      localStorage.removeItem('campusconnect-theme')
+    } catch {
+      // ignore
+    }
+
     const updateRoute = () => {
       setRoute(window.location.pathname)
       try {
@@ -564,7 +513,9 @@ function App() {
           <span>CampusConnect</span>
         </a>
         <div className="nav-links">
-          <a href="#events">Explore events</a>
+          <button type="button" className="nav-link-btn" onClick={() => navigate('/student-dashboard')}>
+            Explore events
+          </button>
           {currentUser && (
             <button className="nav-link-btn" onClick={() => navigate(dashboardPath)}>
               {dashboardLabel}
@@ -689,67 +640,6 @@ function App() {
         </div>
       </section>
 
-      <section className="events-section" id="events">
-        <div className="section-heading">
-          <div>
-            <p className="eyebrow">
-              <i /> FIND YOUR NEXT THING
-            </p>
-            <h2>
-              Something good is
-              <br />
-              <em>always happening.</em>
-            </h2>
-          </div>
-          <button className="text-link text-link-btn" onClick={() => navigate('/student-dashboard')}>
-            View all events <Arrow />
-          </button>
-        </div>
-        <div className="event-grid">
-          <article className="event event-orange">
-            <span className="date">
-              OCT
-              <br />
-              <b>04</b>
-            </span>
-            <p>CREATIVE CLUB</p>
-            <h3>
-              Design Jam:
-              <br />
-              Make it matter
-            </h3>
-            <span className="event-arrow">↗</span>
-          </article>
-          <article className="event event-lime">
-            <span className="date">
-              OCT
-              <br />
-              <b>09</b>
-            </span>
-            <p>ATHLETICS</p>
-            <h3>
-              Sunset
-              <br />
-              5K Run
-            </h3>
-            <span className="event-arrow">↗</span>
-          </article>
-          <article className="event event-purple">
-            <span className="date">
-              OCT
-              <br />
-              <b>12</b>
-            </span>
-            <p>TECH SOCIETY</p>
-            <h3>
-              Build Night:
-              <br />
-              Ideas to impact
-            </h3>
-            <span className="event-arrow">↗</span>
-          </article>
-        </div>
-      </section>
 
       <section className="community" id="community">
         <div className="community-art">

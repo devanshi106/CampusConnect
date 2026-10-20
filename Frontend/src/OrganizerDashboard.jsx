@@ -1,21 +1,21 @@
 import { useEffect, useMemo, useState } from 'react'
-import campusConnectLogo from './assets/campusconnect-logo.png'
+import Logo from './components/Logo'
+import { API_URL as apiUrl } from './config/api'
 
 const Arrow = () => <span aria-hidden="true">→</span>
-const Logo = () => <img className="logo-mark" src={campusConnectLogo} alt="" />
-const apiUrl = import.meta.env.VITE_API_URL ?? 'http://localhost:8080'
 
 const recognizedOrganizations = [
-  { name: 'Student Council', icon: '🏛️', type: 'Apex Student Body' },
-  { name: 'CSI Committee', icon: '💻', type: 'Technical Committee' },
-  { name: 'Airnova', icon: '✈️', type: 'Aviation & Aeromodelling' },
-  { name: 'Sports Committee', icon: '🏅', type: 'Athletics & Games' },
-  { name: 'Devs & Hackers Society', icon: '⚡', type: 'Hackathons Club' },
-  { name: 'Robotics & Automation Club', icon: '🤖', type: 'Hardware & Bots' },
-  { name: 'Creative Design Guild', icon: '🎨', type: 'UI/UX & Design' },
-  { name: 'ACM Student Chapter', icon: '🛠️', type: 'Computing & Workshops' },
-  { name: 'E-Cell (Entrepreneurship Cell)', icon: '💼', type: 'Startup & Competitions' },
+  { name: 'Student Council', icon: '🏛️', type: 'Apex Student Body', aliases: ['student organizers body'] },
+  { name: 'CSI Committee', icon: '💻', type: 'Technical Committee', aliases: ['computer society of india'] },
+  { name: 'Airnova', icon: '✈️', type: 'Aviation & Aeromodelling', aliases: ['aviation & aeromodelling committee'] },
+  { name: 'Sports Committee', icon: '🏅', type: 'Athletics & Games', aliases: ['athletics & games committee'] },
+  { name: 'Devs & Hackers Society', icon: '⚡', type: 'Hackathons Club', aliases: ['devs & hackers', 'trcac devclub'] },
+  { name: 'Robotics & Automation Club', icon: '🤖', type: 'Hardware & Bots', aliases: ['robotics & automation'] },
+  { name: 'Creative Design Guild', icon: '🎨', type: 'UI/UX & Design', aliases: ['creative design guild', 'design guild'] },
+  { name: 'ACM Student Chapter', icon: '🛠️', type: 'Computing & Workshops', aliases: ['acm'] },
+  { name: 'E-Cell (Entrepreneurship Cell)', icon: '💼', type: 'Startup & Competitions', aliases: ['e-cell', 'entrepreneurship cell'] },
 ]
+
 
 export default function OrganizerDashboard({ onHome, onLogout }) {
   const [user] = useState(() => {
@@ -42,14 +42,38 @@ export default function OrganizerDashboard({ onHome, onLogout }) {
   const [toastMessage, setToastMessage] = useState('')
 
   // Create event modal state
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(() => {
+    try {
+      return new URLSearchParams(window.location.search).get('action') === 'create'
+    } catch {
+      return false
+    }
+  })
   const [creating, setCreating] = useState(false)
+
+  const getRecommendedRequirements = (catName) => {
+    const cat = (catName || '').toLowerCase()
+    if (cat.includes('hackathon')) {
+      return 'Number of Team Members; Topic / Track Selected for Hackathon; Project Idea / GitHub / Tech Stack'
+    } else if (cat.includes('workshop')) {
+      return 'Prior Experience Level in Topic; What do you hope to learn or build in this workshop?'
+    } else if (cat.includes('committee') || cat.includes('club')) {
+      return 'Statement of Purpose (Why do you wish to join?); Relevant Leadership or Technical Experience; Available Hours per Week'
+    } else if (cat.includes('competition')) {
+      return 'Participation Mode (Solo or Team Entry); Chosen Competition Track / Idea Summary'
+    } else if (cat.includes('seminar') || cat.includes('webinar')) {
+      return 'Topic of Primary Interest; Questions for the Speaker or Panelists'
+    }
+    return 'Statement of Interest; Relevant Background or Skills'
+  }
+
   const [createForm, setCreateForm] = useState({
     title: '',
     category: 'Workshops',
     eventDate: '',
     location: '',
     description: '',
+    registrationRequirements: 'Prior Experience Level in Topic; What do you hope to learn or build in this workshop?',
   })
 
   // View attendees modal state
@@ -99,13 +123,23 @@ export default function OrganizerDashboard({ onHome, onLogout }) {
 
   // Filter events strictly scoped to activeOrg
   const scopedEvents = useMemo(() => {
-    const orgLower = activeOrg.toLowerCase()
+    if (!activeOrg) return []
+    const orgLower = activeOrg.trim().toLowerCase()
+    const currentMeta = recognizedOrganizations.find(
+      (o) => o.name.toLowerCase() === orgLower
+    )
+    const matchTargets = [orgLower, ...(currentMeta?.aliases || [])]
+
     return events.filter((ev) => {
-      const matchOrg =
-        ev.organizer?.toLowerCase().includes(orgLower) ||
-        orgLower.includes(ev.organizer?.toLowerCase() || '') ||
-        ev.title?.toLowerCase().includes(orgLower)
-      return matchOrg
+      const evOrg = (ev.organizer || '').trim().toLowerCase()
+      if (!evOrg) return false
+
+      return matchTargets.some(
+        (target) =>
+          evOrg === target ||
+          evOrg.includes(target) ||
+          target.includes(evOrg)
+      )
     })
   }, [events, activeOrg])
 
@@ -162,6 +196,7 @@ export default function OrganizerDashboard({ onHome, onLogout }) {
         description: createForm.description.trim(),
         organizer: activeOrg,
         status: 'PENDING', // Awaiting Admin Approval
+        registrationRequirements: createForm.registrationRequirements.trim(),
       }
 
       const response = await fetch(`${apiUrl}/api/events`, {
@@ -180,6 +215,7 @@ export default function OrganizerDashboard({ onHome, onLogout }) {
           eventDate: '',
           location: '',
           description: '',
+          registrationRequirements: getRecommendedRequirements('Workshops'),
         })
         showToast(`🎉 "${created.title}" submitted for Admin Approval!`)
       } else {
@@ -369,13 +405,6 @@ export default function OrganizerDashboard({ onHome, onLogout }) {
           </div>
         </div>
 
-        {/* Notice on Isolation */}
-        <div className="isolation-notice">
-          <span className="notice-icon">🔒</span>
-          <div>
-            <strong>Organization Scoped Access:</strong> You are currently viewing events, attendee rosters, and draft proposals owned specifically by <em>{activeOrg}</em>.
-          </div>
-        </div>
 
         {/* Event Cards Grid */}
         {loading ? (
@@ -523,18 +552,27 @@ export default function OrganizerDashboard({ onHome, onLogout }) {
                   Category *
                   <select
                     value={createForm.category}
-                    onChange={(e) => setCreateForm({ ...createForm, category: e.target.value })}
+                    onChange={(e) => {
+                      const nextCat = e.target.value
+                      setCreateForm({
+                        ...createForm,
+                        category: nextCat,
+                        registrationRequirements: getRecommendedRequirements(nextCat),
+                      })
+                    }}
                   >
                     <option value="Workshops">Workshops</option>
                     <option value="Hackathons">Hackathons</option>
                     <option value="Clubs">Clubs</option>
                     <option value="Competitions">Competitions</option>
                     <option value="Committees">Committees</option>
+                    <option value="Seminars & Webinars">Seminars &amp; Webinars</option>
+                    <option value="Virtual Events">Virtual Events</option>
                   </select>
                 </label>
 
                 <label>
-                  Organizing Body (Locked)
+                  Organizing Body
                   <input type="text" value={activeOrg} disabled readOnly className="input-locked" />
                 </label>
               </div>
@@ -566,12 +604,40 @@ export default function OrganizerDashboard({ onHome, onLogout }) {
               <label>
                 Full Event Description &amp; Details *
                 <textarea
-                  rows={4}
+                  rows={3}
                   placeholder="Detail the agenda, prerequisites, student perks, certificates, or speaker information..."
                   value={createForm.description}
                   onChange={(e) => setCreateForm({ ...createForm, description: e.target.value })}
                   required
                 />
+              </label>
+
+              <label>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                  <span>Registration Requirements (Questions for Students)</span>
+                  <button
+                    type="button"
+                    className="button-link"
+                    style={{ fontSize: '12px' }}
+                    onClick={() =>
+                      setCreateForm((prev) => ({
+                        ...prev,
+                        registrationRequirements: getRecommendedRequirements(prev.category),
+                      }))
+                    }
+                  >
+                    Load {createForm.category} Presets 🪄
+                  </button>
+                </div>
+                <textarea
+                  rows={2}
+                  placeholder="e.g. Number of Team Members; Topic / Track Selected for Hackathon; Project Idea or GitHub Link"
+                  value={createForm.registrationRequirements}
+                  onChange={(e) => setCreateForm({ ...createForm, registrationRequirements: e.target.value })}
+                />
+                <span style={{ fontSize: '11px', color: '#64748b', marginTop: '2px', display: 'block' }}>
+                  Separate individual questions with a semicolon (<code>;</code>). Baseline details (Name, Email, Year, Department) are automatically locked and verified from the student's profile.
+                </span>
               </label>
 
               <div className="modal-footer">
@@ -634,7 +700,7 @@ export default function OrganizerDashboard({ onHome, onLogout }) {
             </div>
 
             <div className="attendees-list-section">
-              <h4>Registered Student Emails</h4>
+              <h4>Registered Student Roster &amp; Criteria Responses</h4>
               {loadingAttendees ? (
                 <p>Loading attendees list…</p>
               ) : attendeesList.length === 0 ? (
@@ -644,13 +710,52 @@ export default function OrganizerDashboard({ onHome, onLogout }) {
               ) : (
                 <div className="emails-scroll-box">
                   <ul className="attendee-emails-list">
-                    {attendeesList.map((email, idx) => (
-                      <li key={idx} className="attendee-email-row">
-                        <span className="attendee-idx">{idx + 1}.</span>
-                        <span className="attendee-email-text">{email}</span>
-                        <span className="attendee-status-tag">Confirmed Attendee</span>
-                      </li>
-                    ))}
+                    {attendeesList.map((item, idx) => {
+                      const isObj = typeof item === 'object' && item !== null
+                      const email = isObj ? item.studentEmail : item
+                      const name = isObj ? item.studentName : null
+                      const year = isObj ? item.year : null
+                      const dept = isObj ? item.department : null
+                      let parsedAnswers = null
+                      if (isObj && item.answers) {
+                        try {
+                          parsedAnswers = JSON.parse(item.answers)
+                        } catch {
+                          parsedAnswers = null
+                        }
+                      }
+
+                      return (
+                        <li key={idx} className="attendee-card-row">
+                          <div className="attendee-card-top">
+                            <div className="attendee-meta-left">
+                              <span className="attendee-idx">#{idx + 1}</span>
+                              <div className="attendee-name-col">
+                                <strong>{name || email}</strong>
+                                <span className="attendee-sub-meta">
+                                  ✉️ {email} {year ? ` • 🎓 ${year}` : ''} {dept ? ` • 🏢 ${dept}` : ''}
+                                </span>
+                              </div>
+                            </div>
+                            <span className="attendee-status-tag">Confirmed</span>
+                          </div>
+
+                          {parsedAnswers && Object.keys(parsedAnswers).length > 0 && (
+                            <div className="attendee-answers-container">
+                              <span className="attendee-answers-header">📋 Submitted Requirements:</span>
+                              <div className="attendee-qa-grid">
+                                {Object.entries(parsedAnswers).map(([q, ans], aIdx) => (
+                                  <div key={aIdx} className="attendee-qa-pill">
+                                    <strong className="attendee-q">{q}:</strong>
+                                    <span className="attendee-a">{ans || '—'}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </li>
+                      )
+                    })}
                   </ul>
                 </div>
               )}
@@ -662,7 +767,10 @@ export default function OrganizerDashboard({ onHome, onLogout }) {
                   type="button"
                   className="button button-primary"
                   onClick={() => {
-                    navigator.clipboard?.writeText(attendeesList.join(', '))
+                    const emailList = attendeesList
+                      .map((item) => (typeof item === 'object' && item?.studentEmail ? item.studentEmail : item))
+                      .filter(Boolean)
+                    navigator.clipboard?.writeText(emailList.join(', '))
                     showToast('Copied email list to clipboard!')
                   }}
                 >

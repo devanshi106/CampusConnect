@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
-import campusConnectLogo from './assets/campusconnect-logo.png'
-
-const Logo = () => <img className="logo-mark" src={campusConnectLogo} alt="" />
-const apiUrl = import.meta.env.VITE_API_URL ?? 'http://localhost:8080'
+import Logo from './components/Logo'
+import { API_URL as apiUrl } from './config/api'
+import { normalizeCategory, BASE_CATEGORIES, CATEGORY_ICONS } from './utils/categories'
 
 export default function AdminDashboard({ onHome, onLogout }) {
   const [user] = useState(() => {
@@ -17,7 +16,19 @@ export default function AdminDashboard({ onHome, onLogout }) {
   const [events, setEvents] = useState([])
   const [registrationCounts, setRegistrationCounts] = useState({})
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState('PENDING')
+  const [activeTab, setActiveTab] = useState(() => {
+    try {
+      const params = new URLSearchParams(window.location.search)
+      const tab = params.get('tab')
+      if (tab && ['PENDING', 'APPROVED', 'REJECTED'].includes(tab.toUpperCase())) {
+        return tab.toUpperCase()
+      }
+    } catch {
+      // fallback
+    }
+    return 'PENDING'
+  })
+  const [selectedCategory, setSelectedCategory] = useState('all')
   const [toastMessage, setToastMessage] = useState('')
   const [actionInProgressId, setActionInProgressId] = useState(null)
 
@@ -77,6 +88,39 @@ export default function AdminDashboard({ onHome, onLogout }) {
     return Object.values(registrationCounts).reduce((a, b) => a + b, 0)
   }, [registrationCounts])
 
+  // Category list for published events sidebar
+  const categories = useMemo(() => {
+    const presentCategories = new Set(approvedEvents.map((e) => normalizeCategory(e.category)))
+    const result = [{ id: 'all', label: 'All Categories', icon: '✦' }]
+
+    BASE_CATEGORIES.slice(1).forEach((cat) => {
+      if (presentCategories.has(cat.id)) {
+        result.push(cat)
+        presentCategories.delete(cat.id)
+      }
+    })
+
+    presentCategories.forEach((catName) => {
+      if (catName && catName !== 'General') {
+        result.push({
+          id: catName,
+          label: catName,
+          icon: CATEGORY_ICONS[catName] || '📌',
+        })
+      }
+    })
+
+    return result
+  }, [approvedEvents])
+
+  // Filtered approved events by selected category
+  const filteredApproved = useMemo(() => {
+    if (selectedCategory === 'all') return approvedEvents
+    return approvedEvents.filter(
+      (e) => normalizeCategory(e.category).toLowerCase() === selectedCategory.toLowerCase()
+    )
+  }, [approvedEvents, selectedCategory])
+
   // Approve event
   const handleApprove = async (eventItem) => {
     setActionInProgressId(eventItem.id)
@@ -130,9 +174,11 @@ export default function AdminDashboard({ onHome, onLogout }) {
       if (response.ok) {
         setEvents((prev) => prev.filter((ev) => ev.id !== eventItem.id))
         showToast(`Event "${eventItem.title}" deleted.`)
+      } else {
+        showToast('Error deleting event.')
       }
     } catch {
-      showToast('Error deleting event.')
+      showToast('Backend connection failed.')
     } finally {
       setActionInProgressId(null)
     }
@@ -204,6 +250,7 @@ export default function AdminDashboard({ onHome, onLogout }) {
 
       {/* Main Workspace */}
       <main className="admin-workspace">
+        {/* Horizontal Tabs: Pending Approvals, Live Published Events, Rejected */}
         <div className="admin-tabs-bar" role="tablist">
           <button
             type="button"
@@ -231,7 +278,7 @@ export default function AdminDashboard({ onHome, onLogout }) {
           </button>
         </div>
 
-        {/* Tab 1: PENDING APPROVALS QUEUE */}
+        {/* Tab 1: PENDING APPROVALS QUEUE (Full width) */}
         {activeTab === 'PENDING' && (
           <div className="admin-tab-content">
             <div className="tab-section-header">
@@ -311,66 +358,128 @@ export default function AdminDashboard({ onHome, onLogout }) {
           </div>
         )}
 
-        {/* Tab 2: LIVE PUBLISHED EVENTS */}
+        {/* Tab 2: LIVE PUBLISHED EVENTS (With Category Sidebar on the left) */}
         {activeTab === 'APPROVED' && (
-          <div className="admin-tab-content">
-            <div className="tab-section-header">
-              <div>
-                <h2>Live Published Campus Events</h2>
-                <p>Events currently visible to students on the Student Dashboard with registration active.</p>
-              </div>
-            </div>
+          <div className="admin-layout-grid">
+            {/* Left Category Filter Sidebar */}
+            <aside className="admin-category-sidebar">
+              <div className="sidebar-card">
+                <div className="sidebar-header">
+                  <span className="sidebar-eyebrow">Category Filter</span>
+                  <h3 className="sidebar-title">Categories</h3>
+                </div>
 
-            <div className="admin-published-table-wrapper">
-              <table className="admin-table">
-                <thead>
-                  <tr>
-                    <th>Event</th>
-                    <th>Category</th>
-                    <th>Organizing Body</th>
-                    <th>Venue</th>
-                    <th>Schedule</th>
-                    <th>Registrations</th>
-                    <th>Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {approvedEvents.map((ev) => {
-                    const count = registrationCounts[ev.id] || 0
+                <nav className="sidebar-nav" aria-label="Published Event Categories">
+                  {categories.map((cat) => {
+                    const count =
+                      cat.id === 'all'
+                        ? approvedEvents.length
+                        : approvedEvents.filter(
+                            (e) => normalizeCategory(e.category).toLowerCase() === cat.id.toLowerCase()
+                          ).length
+                    const isActive = selectedCategory === cat.id
+
                     return (
-                      <tr key={ev.id}>
-                        <td>
-                          <strong>{ev.title}</strong>
-                        </td>
-                        <td>
-                          <span className="category-tag">{ev.category}</span>
-                        </td>
-                        <td>{ev.organizer}</td>
-                        <td>{ev.location}</td>
-                        <td>{ev.eventDate}</td>
-                        <td>
-                          <span className="reg-count-badge">👥 {count}</span>
-                        </td>
-                        <td>
-                          <button
-                            type="button"
-                            className="table-delete-btn"
-                            onClick={() => handleDelete(ev)}
-                            title="Delete event"
-                          >
-                            Delete
-                          </button>
-                        </td>
-                      </tr>
+                      <button
+                        key={cat.id}
+                        type="button"
+                        className={`sidebar-nav-item ${isActive ? 'active' : ''}`}
+                        onClick={() => setSelectedCategory(cat.id)}
+                      >
+                        <span className="sidebar-item-icon">{cat.icon}</span>
+                        <span className="sidebar-item-label">{cat.label}</span>
+                        <span className="sidebar-item-count">{count}</span>
+                      </button>
                     )
                   })}
-                </tbody>
-              </table>
+                </nav>
+              </div>
+            </aside>
+
+            {/* Right Main Table Panel */}
+            <div className="admin-main-panel">
+              <div className="tab-section-header">
+                <div>
+                  <h2>
+                    Live Published Campus Events
+                    {selectedCategory !== 'all' && (
+                      <span style={{ fontSize: '18px', fontWeight: 500, color: '#64748b', marginLeft: '10px' }}>
+                        • {selectedCategory} ({filteredApproved.length})
+                      </span>
+                    )}
+                  </h2>
+                  <p>Events currently visible to students on the Student Dashboard with registration active.</p>
+                </div>
+              </div>
+
+              {filteredApproved.length === 0 ? (
+                <div className="empty-state">
+                  <span className="empty-icon">📂</span>
+                  <h3>No events in this category</h3>
+                  <p>There are no live published events matching &quot;{selectedCategory}&quot;.</p>
+                  {selectedCategory !== 'all' && (
+                    <button
+                      type="button"
+                      className="button button-primary"
+                      onClick={() => setSelectedCategory('all')}
+                    >
+                      Show all categories
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <div className="admin-published-table-wrapper">
+                  <table className="admin-table">
+                    <thead>
+                      <tr>
+                        <th>Event</th>
+                        <th>Category</th>
+                        <th>Organizing Body</th>
+                        <th>Venue</th>
+                        <th>Schedule</th>
+                        <th>Registrations</th>
+                        <th>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredApproved.map((ev) => {
+                        const count = registrationCounts[ev.id] || 0
+                        return (
+                          <tr key={ev.id}>
+                            <td>
+                              <strong>{ev.title}</strong>
+                            </td>
+                            <td>
+                              <span className="category-tag">{ev.category}</span>
+                            </td>
+                            <td>{ev.organizer}</td>
+                            <td>{ev.location}</td>
+                            <td>{ev.eventDate}</td>
+                            <td>
+                              <span className="reg-count-badge">👥 {count}</span>
+                            </td>
+                            <td>
+                              <button
+                                type="button"
+                                className="table-delete-btn"
+                                onClick={() => handleDelete(ev)}
+                                title="Delete event"
+                              >
+                                Delete
+                              </button>
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           </div>
         )}
 
-        {/* Tab 3: REJECTED EVENTS */}
+        {/* Tab 3: REJECTED EVENTS (Full width) */}
         {activeTab === 'REJECTED' && (
           <div className="admin-tab-content">
             <div className="tab-section-header">
